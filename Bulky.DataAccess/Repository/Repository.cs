@@ -49,7 +49,9 @@ namespace Bulky.DataAccess.Repository
                 }
 
             }
-            return query.FirstOrDefault();
+            //var user1 = _context.Users.FirstOrDefault(u=> u.Id == "eca161e1-7c7b-4748-8d70-dd50d08c64dd");
+            //var user2 = _context.ApplicationUsers.FirstOrDefault(u => u.Id == "eca161e1-7c7b-4748-8d70-dd50d08c64dd");
+			return query.FirstOrDefault();
         }
 
         public IEnumerable<T> GetAll(Expression<Func<T, bool>>? filter, string? includeProperties = null)
