@@ -1,7 +1,9 @@
 using Bulky.DataAccess.Repository.IRepository;
 using Bulky.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Security.Claims;
 
 namespace BulkyWeb.Areas.Customer.Controllers
 {
@@ -19,14 +21,46 @@ namespace BulkyWeb.Areas.Customer.Controllers
 
         public IActionResult Index()
         {
-            IEnumerable<Product> productList = _unitOfWork.Product.GetAll("Category");
+            IEnumerable<Product> productList = _unitOfWork.Product.GetAll(includeProperties:"Category");
             return View(productList);
         }
 
-        public IActionResult Details(int id)
+        public IActionResult Details(int productId)
         {
-            Product product = _unitOfWork.Product.Get(p => p.Id == id,"Category");
-            return View(product);
+            Product product = _unitOfWork.Product.Get(p => p.Id == productId, "Category");
+            var shoppingCart = new ShoppingCart() {
+                Product = product,
+                Count = 1,
+                ProductId = productId
+            };
+            return View(shoppingCart);
+        }
+        [HttpPost]
+        [Authorize]
+        public IActionResult Details(ShoppingCart shoppingCart)
+        {
+            var claimsIdentity = (ClaimsIdentity)User.Identity;
+            var userId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
+            shoppingCart.ApplicationUserId = userId;
+            var cartFromDB = _unitOfWork.ShoppingCart.Get(c=> c.ApplicationUserId == userId && c.ProductId == shoppingCart.ProductId);
+            if(cartFromDB is null) 
+            {
+                _unitOfWork.ShoppingCart.Add(shoppingCart);
+            }
+            else
+            {
+                cartFromDB.Count += shoppingCart.Count;
+                _unitOfWork.ShoppingCart.update(cartFromDB);
+            }
+
+            
+            _unitOfWork.Save();
+
+            TempData["success"] = "Cart updated successfully";
+
+
+            return RedirectToAction(nameof(Index));
+
         }
 
         public IActionResult Privacy()
