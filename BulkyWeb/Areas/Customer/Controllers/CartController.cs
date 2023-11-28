@@ -3,6 +3,7 @@ using Bulky.Models;
 using Bulky.Models.ViewModels;
 using Bulky.Utility;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Stripe.Checkout;
 using System.Security.Claims;
@@ -14,12 +15,16 @@ namespace BulkyWeb.Areas.Customer.Controllers
 	public class CartController : Controller
 	{
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly IEmailSender _emailSender;
+
 		[BindProperty]
 		public ShoppingCartVM ShoppingCartVM { get; set; }
 
-		public CartController(IUnitOfWork unitOfWork)
+		public CartController(IUnitOfWork unitOfWork,
+			IEmailSender emailSender)
 		{
 			_unitOfWork = unitOfWork;
+			_emailSender = emailSender;
 		}
 		public IActionResult Index()
 		{
@@ -165,7 +170,7 @@ namespace BulkyWeb.Areas.Customer.Controllers
 			if (user.CompanyId.GetValueOrDefault() == 0)
 			{
 				//regular customer
-				var domain = "https://localhost:7209/";
+				var domain = Request.Scheme +"://" + Request.Host.Value + "/";
 				var options = new SessionCreateOptions
 				{
 					SuccessUrl = domain + $"Customer/Cart/OrderConfirmation?id={ShoppingCartVM.OrderHeader.Id}",
@@ -225,8 +230,12 @@ namespace BulkyWeb.Areas.Customer.Controllers
 					_unitOfWork.OrderHeader.UpdateStatus(id, SD.StatusApproved, SD.PaymentStatusApproved);
 					_unitOfWork.Save();
 				}
+				HttpContext.Session.Clear();
                 
             }
+
+			_emailSender.SendEmailAsync(orderHeader.ApplicationUser.Email, "New Order - Book Shop",
+				$"<p> New Order Created - {orderHeader.Id} </p>");
 
 			var shoppingCartItems = _unitOfWork.ShoppingCart
 				.GetAll(c => c.ApplicationUserId == orderHeader.ApplicationUserId).ToList();
