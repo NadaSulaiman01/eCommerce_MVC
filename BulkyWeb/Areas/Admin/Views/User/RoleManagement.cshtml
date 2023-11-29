@@ -1,0 +1,75 @@
+﻿@model UserVM
+<div class="pb-5">
+<div class="card shadow border-0 mt-4 mb-5">
+    <div class="card-header bg-secondary bg-gradient ml-0 py-3">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h2 class="text-white py-2">Manage User Role</h2>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" class="row" >
+            <div class="row">
+                <div class="col-12">
+                        <div class="border p-3">
+                            <input asp-for="User.Id" hidden />
+                            <div asp-validation-summary="ModelOnly"></div>
+                            <div class="form-floating py-2 col-12">
+                                <input asp-for="User.Name" readonly class="form-control border-0 shadow" placeholder="name@example.com" />
+                                <label asp-for="User.Name" class="ms-2 text-muted">Full Name</label>
+                            </div>
+                            <div class="form-floating py-2 col-12">
+                                <select asp-for="RoleId" asp-items="@Model.Roles" class="form-select border-0 shadow">
+                                </select>
+                                <label asp-for="RoleId" class="ms-2"></label>
+                                <span asp-validation-for="RoleId" class="text-danger"></span>
+                            </div>
+                            <div class="form-floating py-2 col-12">
+                                <select asp-for="User.CompanyId" style="display:none"  asp-items="@Model.Companies" class="form-select border-0 shadow">
+                                    <option selected disabled>--Select Company--</option>
+                                </select>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-6 col-md-3">
+                                        <button type="submit" class="btn btn-primary form-control">Save changes</button>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <a asp-area="Admin" asp-controller="User" asp-action="Index" class="btn btn-outline-primary border form-control">Return to list</a>
+                                </div>
+                            </div>
+
+                        </div>
+                </div>
+            </div>
+            
+        </form>
+
+    </div>
+</div>
+</div>
+
+
+@section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            var selection = $('#RoleId Option:Selected').text();
+            if (selection == 'Company') {
+                $('#User_CompanyId').show();
+            }
+            else {
+                $('#User_CompanyId').hide();
+            }
+            $('#RoleId').change(function () {
+                var selection = $('#RoleId Option:Selected').text();
+                if (selection == 'Company') {
+                    $('#User_CompanyId').show();
+                }
+                else {
+                    $('#User_CompanyId').hide();
+                }
+            })
+        })
+    </script>
+}
