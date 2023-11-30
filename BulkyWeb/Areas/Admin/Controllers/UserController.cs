@@ -15,15 +15,19 @@ namespace BulkyWeb.Areas.Admin.Controllers
     [Authorize(Roles = SD.Role_Admin)]
     public class UserController : Controller
     {
-		private readonly ApplicationDbContext _context;
+		private readonly IUnitOfWork _unitOfWork;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
         public int MyProperty { get; set; }
 
-        public UserController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public UserController(IUnitOfWork unitOfWork,
+            UserManager<IdentityUser> userManager,
+            RoleManager<IdentityRole> roleManager)
         {
-			_context = context;
+			_unitOfWork = unitOfWork;
             _userManager = userManager;
+            _roleManager = roleManager;
         }
         public IActionResult Index()
         {
@@ -32,19 +36,23 @@ namespace BulkyWeb.Areas.Admin.Controllers
 
         public IActionResult RoleManagement(string id)
         {
-            var userFromDb = _context.ApplicationUsers.Include(u => u.Company).FirstOrDefault(u => u.Id == id);
+          //  var userFromDb = _context.ApplicationUsers.Include(u => u.Company).FirstOrDefault(u => u.Id == id);
+            var userFromDb = _unitOfWork.ApplicationUser.Get(filter: u  => u.Id == id, includeProperties: "Company");
             if (userFromDb == null)
             {
                 return NotFound();
             }
 
-            var roles = _context.Roles.ToList();
-            var userRoles = _context.UserRoles.ToList();
+            //var roles = _context.Roles.ToList();
+            //var userRoles = _context.UserRoles.ToList();
+
+            var roles = _roleManager.Roles.ToList();
+            //var userRoles = _roleManager.rol
 
             var userVM = new UserVM
             {
                 User = userFromDb,
-                Companies = _context.Companies.Select(c => new SelectListItem
+                Companies = _unitOfWork.Company.GetAll().Select(c => new SelectListItem
                 {
                     Value = c.Id.ToString(),
                     Text = c.Name
@@ -59,9 +67,12 @@ namespace BulkyWeb.Areas.Admin.Controllers
 
 
             };
-            var roleId = userRoles.FirstOrDefault(r => r.UserId == id).RoleId;
-            userVM.User.Role = roles.FirstOrDefault(r => r.Id == roleId).Name;
-            userVM.RoleId = roleId;
+            //var roleId = userRoles.FirstOrDefault(r => r.UserId == id).RoleId;
+
+            var roleId = _userManager.GetRolesAsync(userFromDb).GetAwaiter().GetResult().FirstOrDefault();
+            userVM.User.Role = roleId;
+            var numericRoleId = roles.FirstOrDefault(r => r.Name == roleId).Id;
+            userVM.RoleId = numericRoleId;
 
             return View(userVM);
         }
@@ -70,19 +81,19 @@ namespace BulkyWeb.Areas.Admin.Controllers
         public IActionResult RoleManagement(UserVM userVM)
         {
 
-            var userFromDb = _context.ApplicationUsers.Include(u => u.Company).FirstOrDefault(u => u.Id == userVM.User.Id);
+            var userFromDb = _unitOfWork.ApplicationUser.Get(filter: u => u.Id == userVM.User.Id, includeProperties: "Company", flag:true);
             if (userFromDb == null)
             {
                 return NotFound();
             }
 
-            var roles = _context.Roles.ToList();
+            var roles = _roleManager.Roles.ToList(); 
             var companyRole = roles.FirstOrDefault(r => r.Name == SD.Role_Company);
-            
 
 
-            var userRole = _context.UserRoles.FirstOrDefault(ur => ur.UserId == userVM.User.Id);
-            var oldRole = roles.FirstOrDefault(r => r.Id == userRole.RoleId);
+
+            var roleId = _userManager.GetRolesAsync(userFromDb).GetAwaiter().GetResult().FirstOrDefault();
+            var oldRole = roles.FirstOrDefault(r => r.Name == roleId);
             var newRole = roles.FirstOrDefault(r => r.Id == userVM.RoleId);
             //userRole.RoleId = userVM.RoleId;
 
@@ -100,7 +111,7 @@ namespace BulkyWeb.Areas.Admin.Controllers
 
 
 
-            _context.SaveChanges();
+            _unitOfWork.Save();
             // _userManager.RemoveFromRoleAsync(userFromDb)
 
             
@@ -123,15 +134,15 @@ namespace BulkyWeb.Areas.Admin.Controllers
         [HttpGet]
         public IActionResult GetAll()
         {
-            var userList = _context.ApplicationUsers.Include(u => u.Company).ToList();
-            var roles = _context.Roles.ToList();
-            var userRoles = _context.UserRoles.ToList();
+            var userList = _unitOfWork.ApplicationUser.GetAll(includeProperties:"Company");
+            var roles = _roleManager.Roles.ToList();
+            //var userRoles = _context.UserRoles.ToList();
 
             foreach (var user in userList)
             {
-                var roleId = userRoles.FirstOrDefault(r => r.UserId == user.Id).RoleId;
-                var roleName = roles.FirstOrDefault(r => r.Id == roleId).Name;
-                user.Role = roleName;
+                var roleId = _userManager.GetRolesAsync(user).GetAwaiter().GetResult().FirstOrDefault();
+                //var roleName = roles.FirstOrDefault(r => r.Id == roleId).Name;
+                user.Role = roleId;
             }
 
             return Json(new { data = userList }
@@ -143,7 +154,8 @@ namespace BulkyWeb.Areas.Admin.Controllers
         {
             
 
-            var user = _context.ApplicationUsers.FirstOrDefault(u => u.Id == id);
+            //var user = _context.ApplicationUsers.FirstOrDefault(u => u.Id == id);
+            var user = _unitOfWork.ApplicationUser.Get(filter: u => u.Id == id, flag:true);
             if (user == null)
             {
                 return Json(new { success = false, message = "Error while locking/unlocking" });
@@ -157,7 +169,7 @@ namespace BulkyWeb.Areas.Admin.Controllers
                 user.LockoutEnd = DateTime.Now.AddDays(30);
             }
 
-            _context.SaveChanges();
+            _unitOfWork.Save();
 
 
             return Json(new { success = true, message = "Operation successful" });

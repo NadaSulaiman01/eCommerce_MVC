@@ -1,6 +1,6 @@
 ﻿@page
 @model LoginModel
-
+<div class="mb-4">
 <div class="card shadow border-0 mt-4">
     <div class="card-header bg-secondary bg-gradient m-lg-0 py-4">
         <div class="row">
@@ -53,7 +53,7 @@
             </div>
             <div class="col-md-12 p-3 text-center">
                 <section>
-                    <p class="divider-text d-flex pt-3">or</p>
+                    <p class="divider-text d-flex ">or</p>
                     @{
                         if ((Model.ExternalLogins?.Count ?? 0) == 0)
                         {
@@ -69,12 +69,24 @@
                         else
                         {
                             <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                                <div>
+                                <div class="">
                                     <p>
-                                        @foreach (var provider in Model.ExternalLogins!)
-                                        {
-                                            <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                                        }
+                                        <div class="row justify-content-around mt-4">
+                                            @foreach (var provider in Model.ExternalLogins!)
+                                            {
+                                                <div class="col-sm-3 text-center">
+                                                    @if (provider.DisplayName == "Microsoft")
+                                                    {
+                                                        <img src="~/images/Mircosoft.png" class="w-75 rounded mb-2" />
+                                                    }
+                                                    else if (provider.DisplayName == "Facebook")
+                                                    {
+                                                        <img src="~/images/Facebook.png" class="w-75 rounded mb-2" />
+                                                    }
+                                                    <button type="submit" class="btn btn-primary mt-2 mb-4" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">Continue with @provider.DisplayName</button>
+                                                </div>
+                                            }
+                                        </div>
                                     </p>
                                 </div>
                             </form>
@@ -87,7 +99,7 @@
         </div>
         </div>
 
-
+</div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
