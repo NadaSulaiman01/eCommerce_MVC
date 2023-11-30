@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Bulky.Utility;
+using System.Security.Claims;
+using Bulky.DataAccess.Repository.IRepository;
 
 namespace BulkyWeb.Areas.Identity.Pages.Account
 {
@@ -21,11 +24,13 @@ namespace BulkyWeb.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, IUnitOfWork unitOfWork)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>
@@ -114,11 +119,36 @@ namespace BulkyWeb.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("User logged in.");
+
+                    var claimsIdentity = (ClaimsIdentity)User.Identity;
+                    var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
+                    if (claim != null)
+                    {
+                        if (HttpContext.Session.GetInt32(SD.SessionCart) == null)
+                        {
+                            HttpContext.Session.SetInt32(SD.SessionCart,
+                          _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == claim.Value).Count());
+
+                        }
+                    }
+
+
+                        _logger.LogInformation("User logged in.");
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)
                 {
+                    var claimsIdentity = (ClaimsIdentity)User.Identity;
+                    var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
+                    if (claim != null)
+                    {
+                        if (HttpContext.Session.GetInt32(SD.SessionCart) == null)
+                        {
+                            HttpContext.Session.SetInt32(SD.SessionCart,
+                          _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == claim.Value).Count());
+
+                        }
+                    }
                     return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
                 }
                 if (result.IsLockedOut)
